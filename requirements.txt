@@ -1,0 +1,9 @@
+# Python package list for "Trading School".
+# Streamlit Community Cloud reads this file and installs these automatically.
+# Versions are pinned with ">=" minimums known to work on Python 3.13.
+
+streamlit>=1.40
+yfinance>=0.2.50
+plotly>=5.24
+pandas>=2.2
+numpy>=2.1
