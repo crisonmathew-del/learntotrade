@@ -218,11 +218,24 @@ GLOSSARY: list[dict] = [
 #                    or "Neutral" (hints indecision / could go either way).
 #   "meaning"     -> plain-English description of what it suggests.
 #   "reliability" -> honest note: NOT all patterns are equally trustworthy.
-#   "sketch"      -> a tiny ASCII diagram so the Pattern Library is visual even
-#                    without images. It draws the basic shape in text.
+#   "schematic"   -> the SHAPE of the pattern as plain numbers, so the app can
+#                    draw a clean little chart of it (real candlesticks / lines)
+#                    instead of crude text art. See the format note below.
 #
-# Keeping the sketch as text (not an image file) means the app has zero image
-# dependencies and still works fully offline.
+# SCHEMATIC FORMAT (just data — no charting code lives here, so this file stays
+# dependency-free and the static tabs work even with no internet):
+#
+#   For candlestick patterns:
+#     {"kind": "candles", "candles": [[open, high, low, close], ...]}
+#     Each inner list is ONE candle. The app draws them as proper candlesticks
+#     (green when close > open, red when close < open).
+#
+#   For chart patterns (shapes drawn as a price line):
+#     {"kind": "line", "x": [...], "y": [...], "neckline": [x0, x1, y]}
+#     "x"/"y" are the points of the price line; the optional "neckline" draws a
+#     dashed reference line (used by Head and Shoulders).
+#
+# The numbers are just an illustrative 0–10-ish scale — only the SHAPE matters.
 
 PATTERNS: list[dict] = [
     {
@@ -240,11 +253,12 @@ PATTERNS: list[dict] = [
             "signal by itself. It's far more useful AFTER a strong move and "
             "when the next candle confirms a turn."
         ),
-        "sketch": (
-            "    |   \n"
-            "  --+--   <- tiny body, long wicks\n"
-            "    |   "
-        ),
+        # One candle: open and close almost equal (tiny body) with long wicks
+        # above and below -> a cross/plus shape.
+        "schematic": {
+            "kind": "candles",
+            "candles": [[5.0, 8.0, 2.0, 5.1]],
+        },
     },
     {
         "name": "Hammer",
@@ -260,12 +274,11 @@ PATTERNS: list[dict] = [
             "Medium. Stronger when it forms at a known support level and when "
             "the next day closes higher to confirm. Weak in isolation."
         ),
-        "sketch": (
-            "   [#]   <- small body up top\n"
-            "    |\n"
-            "    |    <- long lower wick\n"
-            "    |"
-        ),
+        # Small body near the TOP, long lower wick, little/no upper wick.
+        "schematic": {
+            "kind": "candles",
+            "candles": [[7.0, 8.0, 3.0, 7.6]],
+        },
     },
     {
         "name": "Shooting Star",
@@ -281,12 +294,11 @@ PATTERNS: list[dict] = [
             "Medium. Most reliable at resistance or after an extended rally, "
             "and when the following candle closes lower."
         ),
-        "sketch": (
-            "    |\n"
-            "    |    <- long upper wick\n"
-            "    |\n"
-            "   [#]   <- small body at bottom"
-        ),
+        # Small body near the BOTTOM, long upper wick, little/no lower wick.
+        "schematic": {
+            "kind": "candles",
+            "candles": [[4.6, 9.0, 3.7, 4.0]],
+        },
     },
     {
         "name": "Bullish Engulfing",
@@ -302,12 +314,15 @@ PATTERNS: list[dict] = [
             "Medium-high, especially after a clear downtrend and on strong "
             "volume. Bigger engulfing candle = stronger signal."
         ),
-        "sketch": (
-            "   [#]      <- big green candle...\n"
-            "  [ # ]\n"
-            "  [ . ]     <- ...engulfs small prior red\n"
-            "  [ # ]"
-        ),
+        # Two candles side by side: a small red one, then a big green one whose
+        # body fully covers (engulfs) the previous red body.
+        "schematic": {
+            "kind": "candles",
+            "candles": [
+                [6.0, 6.3, 4.7, 5.0],   # small red (close < open)
+                [4.6, 6.8, 4.3, 6.4],   # big green that engulfs it
+            ],
+        },
     },
     {
         "name": "Bearish Engulfing",
@@ -322,12 +337,15 @@ PATTERNS: list[dict] = [
             "Medium-high after a clear uptrend and on strong volume. The "
             "larger the engulfing candle, the stronger the message."
         ),
-        "sketch": (
-            "  [ # ]     <- big red candle...\n"
-            "  [ . ]\n"
-            "   [#]      <- ...engulfs small prior green\n"
-            "  [ # ]"
-        ),
+        # Two candles side by side: a small green one, then a big red one whose
+        # body fully covers (engulfs) the previous green body.
+        "schematic": {
+            "kind": "candles",
+            "candles": [
+                [5.0, 6.3, 4.7, 6.0],   # small green (close > open)
+                [6.4, 6.8, 4.3, 4.6],   # big red that engulfs it
+            ],
+        },
     },
     {
         "name": "Cup and Handle",
@@ -344,11 +362,14 @@ PATTERNS: list[dict] = [
             "breakout comes on strong volume. A deep, jagged cup is less "
             "reliable."
         ),
-        "sketch": (
-            "  \\          /\\___   <- handle\n"
-            "   \\        /\n"
-            "    \\______/        <- rounded cup"
-        ),
+        # A rounded "U" (the cup) that recovers to the rim, a small dip (the
+        # handle), then a breakout above the rim.
+        "schematic": {
+            "kind": "line",
+            "x": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            "y": [10.0, 9.0, 7.5, 6.3, 5.7, 5.6, 5.9, 6.8, 8.2, 9.8,
+                  9.2, 9.0, 11.0],
+        },
     },
     {
         "name": "Bull Flag",
@@ -364,12 +385,13 @@ PATTERNS: list[dict] = [
             "breakout above it comes on rising volume. A sloppy, long flag is "
             "weaker."
         ),
-        "sketch": (
-            "        \\\\         <- flag (drift down)\n"
-            "       /  \\\\\n"
-            "      /            <- flagpole (sharp run-up)\n"
-            "     /"
-        ),
+        # A sharp run-up (the flagpole), a small downward drift (the flag),
+        # then a breakout higher.
+        "schematic": {
+            "kind": "line",
+            "x": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "y": [3.0, 4.6, 6.4, 9.0, 8.6, 8.2, 7.9, 8.1, 10.6],
+        },
     },
     {
         "name": "Head and Shoulders",
@@ -386,12 +408,14 @@ PATTERNS: list[dict] = [
             "once the neckline actually breaks, ideally on increased volume. "
             "Before that, it's just three bumps."
         ),
-        "sketch": (
-            "        /\\          <- head\n"
-            "   /\\  /  \\  /\\     <- shoulders\n"
-            "  /  \\/    \\/  \\\n"
-            " ---------------    <- neckline"
-        ),
+        # Three peaks: left shoulder, a higher head, right shoulder, with a
+        # dashed neckline through the two dips and a break below it at the end.
+        "schematic": {
+            "kind": "line",
+            "x": [0, 1, 2, 3, 4, 5, 6],
+            "y": [3.0, 6.0, 4.0, 8.0, 4.0, 6.0, 2.5],
+            "neckline": [1.0, 5.0, 4.0],
+        },
     },
 ]
 
@@ -402,7 +426,7 @@ PATTERNS: list[dict] = [
 # We BUILD the quiz automatically from the PATTERNS list above. That way, if
 # you add a new pattern, it can show up in the quiz too — no duplicate text.
 #
-# Each quiz question shows a pattern's sketch + meaning and asks "which pattern
+# Each quiz question shows a pattern's diagram + meaning and asks "which pattern
 # is this?". The correct answer is the pattern's name; the wrong choices are
 # other pattern names of the SAME type (so the quiz isn't trivially easy).
 
@@ -411,7 +435,7 @@ def build_quiz_questions() -> list[dict]:
     """Create one quiz question per pattern.
 
     Returns a list of dictionaries, each with:
-        "sketch"     -> the diagram to show.
+        "schematic"  -> the shape data to draw (same format as in PATTERNS).
         "hint"       -> the plain-English meaning (so the user can reason).
         "answer"     -> the correct pattern name.
         "options"    -> a list of possible names (includes the answer).
@@ -438,7 +462,7 @@ def build_quiz_questions() -> list[dict]:
 
         questions.append(
             {
-                "sketch": pattern["sketch"],
+                "schematic": pattern["schematic"],
                 "hint": pattern["meaning"],
                 "answer": pattern["name"],
                 "options": options,

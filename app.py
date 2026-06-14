@@ -183,6 +183,69 @@ def detect_candlestick_patterns(data: pd.DataFrame) -> list[dict]:
     return hits
 
 
+def render_pattern_figure(schematic: dict, height: int = 240) -> go.Figure:
+    """Draw a small, clean diagram of a pattern from its 'schematic' data.
+
+    This turns the plain numbers stored in content.py into a real little chart:
+    candlestick patterns become actual candlesticks, and chart patterns become
+    a price line. Far clearer than text art — and it reuses the same Plotly
+    library the main chart already uses.
+
+    Args:
+        schematic: the shape data (see the format note in content.py).
+        height: how tall the diagram should be, in pixels.
+
+    Returns:
+        A Plotly figure ready to hand to st.plotly_chart().
+    """
+    fig = go.Figure()
+
+    if schematic["kind"] == "candles":
+        # Draw proper candlesticks. We place them at x = 0, 1, 2, …
+        candles = schematic["candles"]
+        xs = list(range(len(candles)))
+        fig.add_trace(go.Candlestick(
+            x=xs,
+            open=[c[0] for c in candles],
+            high=[c[1] for c in candles],
+            low=[c[2] for c in candles],
+            close=[c[3] for c in candles],
+            increasing_line_color="#26a69a", increasing_fillcolor="#26a69a",
+            decreasing_line_color="#ef5350", decreasing_fillcolor="#ef5350",
+            showlegend=False,
+            hoverinfo="skip",            # it's a schematic, not real data
+        ))
+        # Add side padding so a single candle isn't squashed against the edge.
+        fig.update_xaxes(range=[-1, len(candles)])
+
+    else:  # "line" — a chart pattern drawn as a price line.
+        fig.add_trace(go.Scatter(
+            x=schematic["x"], y=schematic["y"],
+            mode="lines",
+            line=dict(color="#42a5f5", width=3, shape="spline"),  # smooth curve
+            showlegend=False, hoverinfo="skip",
+        ))
+        # Optional dashed neckline (used by Head and Shoulders).
+        if "neckline" in schematic:
+            x0, x1, y = schematic["neckline"]
+            fig.add_shape(
+                type="line", x0=x0, x1=x1, y0=y, y1=y,
+                line=dict(color="#FFB300", width=2, dash="dash"),
+            )
+
+    # Strip away axes/gridlines/background so it reads as a clean little icon.
+    fig.update_xaxes(visible=False)
+    fig.update_yaxes(visible=False)
+    fig.update_layout(
+        height=height,
+        margin=dict(l=5, r=5, t=5, b=5),
+        xaxis_rangeslider_visible=False,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
+    return fig
+
+
 # ===========================================================================
 #  PART B: LIVE DATA (cached so we don't hammer the data source)
 # ===========================================================================
@@ -596,7 +659,7 @@ def render_pattern_library() -> None:
     st.header("📚 Pattern Library")
     st.write(
         "A visual dictionary of the patterns traders look for. Each one has a "
-        "simple sketch, a plain-English meaning, and an **honest reliability "
+        "simple diagram, a plain-English meaning, and an **honest reliability "
         "note** — because not all patterns are equally trustworthy."
     )
 
@@ -634,9 +697,13 @@ def render_pattern_library() -> None:
                         f"### {bias_emoji[pattern['bias']]} {pattern['name']}"
                     )
                     st.caption(f"{pattern['type']} pattern · {pattern['bias']} bias")
-                    # The ASCII sketch, shown in a monospace code block so it
-                    # keeps its shape.
-                    st.code(pattern["sketch"], language=None)
+                    # A real little diagram of the pattern (candles or a line).
+                    # The key must be unique per chart, so we use the name.
+                    st.plotly_chart(
+                        render_pattern_figure(pattern["schematic"]),
+                        use_container_width=True,
+                        key=f"lib_{pattern['name']}",
+                    )
                     st.markdown(f"**What it means:** {pattern['meaning']}")
                     st.markdown(f"**Reliability:** {pattern['reliability']}")
 
@@ -649,7 +716,7 @@ def render_quiz() -> None:
     """Show a pattern and ask the user to identify it; track the score."""
     st.header("🎯 Quiz Mode")
     st.write(
-        "Look at the sketch and the hint, then pick the pattern. We'll tell you "
+        "Look at the diagram and the hint, then pick the pattern. We'll tell you "
         "if you're right **and why**, and keep your score for this session."
     )
 
@@ -680,7 +747,13 @@ def render_quiz() -> None:
 
     st.divider()
     st.markdown(f"**Question {index + 1} of {len(questions)} — which pattern is this?**")
-    st.code(question["sketch"], language=None)
+    # Draw the diagram (no label on it, so it doesn't give the answer away).
+    # The key includes the question index so each one renders independently.
+    st.plotly_chart(
+        render_pattern_figure(question["schematic"]),
+        use_container_width=True,
+        key=f"quiz_fig_{index}",
+    )
     st.markdown(f"*Hint:* {question['hint']}")
 
     # The multiple-choice options as radio buttons.
